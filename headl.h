@@ -1,4 +1,4 @@
-#include <cstdint>
+
 
 #ifndef DEF
 #define DEF
@@ -16,27 +16,29 @@ typedef enum {
     TASK_CANCELLED
 } TaskState;
 
-typedef struct Task {
+typedef struct {
     unsigned long long id;
-    char name[MAX_LEN];
-    TaskState state;
+    //char name[MAX_LEN];
     
-
-    uint64_t created_at;
-    uint64_t scheduled_at;
-    uint64_t started_at;
-    uint64_t finished_at;
+    TaskState state;
+        
+    unsigned long long created_at;
+    unsigned long long scheduled_at;
+    unsigned long long started_at;
+    unsigned long long finished_at;
     unsigned int delay;
     unsigned int timeout;
     
     char program_to_exec[1024];
-
-    
-    // Результат
-    char result[MAX_LEN];
-    char error[512];
     int exit_code;
 } Task;
+
+
+typedef struct QueueNode{
+    Task *task;
+    struct QueueNode *next;
+    unsigned deploy_tm;
+} QueueNode;
 
 
 #endif
