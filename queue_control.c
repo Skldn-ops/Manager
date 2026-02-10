@@ -3,6 +3,9 @@
 
 QueueNode *head_glob = NULL;
 extern start_fd[2];
+void mergeSortList(QueueNode** head);
+QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
+QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete);
 
 
 void handl_start(int sig)
@@ -50,13 +53,49 @@ void queue_control(void)
     close(start_fd[1]);
     signal(SIGUSR1, handl_start);
     
+    pid_t table[MAX_PROGRAMMS_RUN]; //индекс в массиве - ячейка, в которой лежит PID процесса с (id = индекс в массиве)
     while(1)
     {
         QueueNode *head_loc = head_glob;
         while(head_loc != NULL)
         {
             head_loc->deploy_tm = head_loc->task->scheduled_at - time(NULL);
-            head_loc = head_loc->next;
+            if(head_loc->deploy_tm <= 0)
+            {
+                char program_to_exec_tp[MAX_LEN];
+                strcpy(program_to_exec_tp, head_loc->task->program_to_exec);
+                time_t timeout_tp = head_loc->task->timeout;
+
+                head_glob = deleteNodeByPtr(head_glob, head_loc);
+                head_loc = NULL;
+
+                pid_t controlling_pid = fork();
+                if(!controlling_pid)
+                {
+                    int status;
+                    pid_t executor_pid = fork();
+                    if(!executor_pid)
+                    {
+                        execlp(program_to_exec_tp, program_to_exec_tp, NULL);
+                    }
+                    sleep(timeout_tp);
+                    waitpid(executor_pid, &status, WNOHANG);
+                    int ret = -1;
+                    if(WIFEXITED(status))
+                    {
+                        int ret = WEXITSTATUS(status);
+                    }
+                    else
+                    {
+                        kill(executor_pid, SIGKILL);
+                    }
+                    exit(ret);
+                }
+            }
+            else
+            {
+                head_loc = head_loc->next;
+            }
         }
     }
 }

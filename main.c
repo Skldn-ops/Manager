@@ -1,8 +1,6 @@
 #include "headl.h"
 
 
-void mergeSortList(QueueNode** head);
-QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
 void queue_control(void);
 
 

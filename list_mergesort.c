@@ -63,3 +63,27 @@ QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode) {
     
     return head;
 }
+
+QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete) {
+    if (head == NULL || nodeToDelete == NULL) {
+        return head;
+    }
+    
+    if (head == nodeToDelete) {
+        QueueNode* newHead = head->next;
+        free(head);
+        return newHead;
+    }
+    
+    QueueNode* current = head;
+    while (current != NULL && current->next != nodeToDelete) {
+        current = current->next;
+    }
+    
+    if (current != NULL) {
+        current->next = nodeToDelete->next;
+        free(nodeToDelete);
+    }
+    
+    return head;
+}

@@ -1,9 +1,18 @@
-
+#include <stdio.h>
+#include <stdlib.h>
+#include <sys/file.h>
+#include <sys/wait.h>
+#include <unistd.h>
+#include <errno.h>
+#include <string.h>
+#include <time.h>
+#include <signal.h>
 
 #ifndef DEF
 #define DEF
 
 #define MAX_LEN 1024
+#define MAX_PROGRAMMS_RUN 100
 
 typedef enum {
     TASK_PENDING,
