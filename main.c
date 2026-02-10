@@ -24,7 +24,9 @@ int main(void)
         queue_control();
     }
     close(start_fd[0]);
-
+    
+    printf("Queue ready: prog pid is %d and queue oid is %d\n", getpid(), queue_control_pid);
+    
     while(1)
     {
         printf("> ");
@@ -60,5 +62,13 @@ int main(void)
             write(start_fd[1], input, sizeof(input));
             kill(queue_control_pid, SIGUSR1);
         }
+        else if(strcmp(command, "exit") == 0)
+        {
+            kill(queue_control_pid, SIGKILL);
+            printf("Queue offline\n");
+            break;
+        }
     }
+    printf("Exited\n");
+    return 0;
 }

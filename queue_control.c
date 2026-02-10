@@ -2,7 +2,7 @@
 
 
 QueueNode *head_glob = NULL;
-extern start_fd[2];
+extern int start_fd[2];
 void mergeSortList(QueueNode** head);
 QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
 QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete);
@@ -64,7 +64,7 @@ void queue_control(void)
             {
                 char program_to_exec_tp[MAX_LEN];
                 strcpy(program_to_exec_tp, head_loc->task->program_to_exec);
-                time_t timeout_tp = head_loc->task->timeout;
+                unsigned int timeout_tp = head_loc->task->timeout;
 
                 head_glob = deleteNodeByPtr(head_glob, head_loc);
                 head_loc = NULL;
@@ -72,24 +72,24 @@ void queue_control(void)
                 pid_t controlling_pid = fork();
                 if(!controlling_pid)
                 {
-                    int status;
+                    int status = -1;
                     pid_t executor_pid = fork();
                     if(!executor_pid)
                     {
                         execlp(program_to_exec_tp, program_to_exec_tp, NULL);
                     }
+                    
                     sleep(timeout_tp);
-                    waitpid(executor_pid, &status, WNOHANG);
-                    int ret = -1;
-                    if(WIFEXITED(status))
+                    int ret = waitpid(executor_pid, &status, WNOHANG);
+                    if(ret)
                     {
-                        int ret = WEXITSTATUS(status);
+                        ret = WEXITSTATUS(status);
                     }
                     else
                     {
                         kill(executor_pid, SIGKILL);
                     }
-                    exit(ret);
+                    _exit(0);
                 }
             }
             else
