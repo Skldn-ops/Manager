@@ -1,25 +1,31 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <sys/file.h>
-#include <sys/wait.h>
-#include <unistd.h>
-#include <errno.h>
-#include <string.h>
-#include <time.h>
-
 #include "headl.h"
 
 
 void mergeSortList(QueueNode** head);
 QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
+void queue_control(void);
+
+
+//      start program_to_exec delay timeout
+
+int start_fd[2];
 
 int main(void)
 {
     char input[MAX_LEN];
-//      start name delay timeout
-    QueueNode *head = NULL;
-    QueueNode *tail = NULL;
+
+    // QueueNode *head = NULL;
+    //QueueNode *tail = NULL;
+
     unsigned long long id_maker = 0;
+    
+    pipe(start_fd);
+    pid_t queue_control_pid = fork();
+    if(!queue_control_pid)
+    {
+        queue_control();
+    }
+    close(start_fd[0]);
 
     while(1)
     {
@@ -42,41 +48,19 @@ int main(void)
         }
         
         char command[MAX_LEN];
-        char name[MAX_LEN];
+        char program_to_exec[MAX_LEN];
         time_t delay;
         time_t timeout;
         sscanf(input, "%s", command);
 
         if(strcmp(command, "start") == 0)
         {
-            sscanf(input + strlen(command), "%s %ld %ld", name, &delay, &timeout);
-            
-            Task *task = malloc(sizeof(Task));
-            task->created_at = time(NULL);
-            task->delay = delay;
-            task->exit_code = -1;
-            task->finished_at = 0;
-            task->id = id_maker++;
-            strcpy(task->program_to_exec, name);
-            task->scheduled_at = task->created_at + delay;
-            task->started_at = 0;
-            task->state = (delay==0) ? TASK_PENDING : TASK_DELAYED;
-            task->timeout = timeout;
+            id_maker++;
 
-            QueueNode *node = malloc(sizeof(QueueNode));
-            node->deploy_tm = task->scheduled_at - time(NULL);
-            node->task = task;
-            node->next = NULL;
-            if(head != NULL)
-            {
-                mergeSortList(&head);
-                head = insert_QueueNode(head, node);
-            }
-            else
-            {
-                head = node;
-            }
+            sprintf(input + strlen(input), " %llu", id_maker);
+
+            write(start_fd[1], input, sizeof(input));
+            kill(queue_control_pid, SIGUSR1);
         }
-
     }
 }
