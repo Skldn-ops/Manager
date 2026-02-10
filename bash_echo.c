@@ -7,7 +7,7 @@
 
 int main(void)
 {
-    sleep(10);
-    system("gnome-terminal -- bash -c \"echo 'Hello_101'; exec bash\"");
+    system("gnome-terminal -- bash -c \"echo 'Hello'; exec bash\"");
+
     return 0;
 }
