@@ -1,17 +1,15 @@
 #include "headl.h"
 
-
 QueueNode *head_glob = NULL;
-extern int start_fd[2];
 void mergeSortList(QueueNode** head);
 QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
 QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete);
-
+int server_fd, client_fd;
 
 void handl_start(int sig)
 {
     char input[MAX_LEN];
-    read(start_fd[0], input, sizeof(input));
+    recv(client_fd, input, sizeof(input), 0);
 
     char program_to_exec[MAX_LEN];
     time_t delay;
@@ -48,11 +46,51 @@ void handl_start(int sig)
 }
 
 
+void handl_reconnect(int sig)
+{
+    client_fd = accept(server_fd, NULL, NULL);
+}
+
 void queue_control(void)
 {
-    close(start_fd[1]);
     signal(SIGUSR1, handl_start);
+    signal(SIGCHLD, SIG_IGN); // Чтобы завершившиеся контролирующие процессы не висели как зомби
+    signal(SIGHUP, SIG_IGN);
+    signal(SIGUSR2, handl_reconnect);
+
+    struct sockaddr_un addr;
     
+    pid_t pid_saver = getpid();
+    int fd = open("/tmp/myservpid", O_TRUNC | O_WRONLY | O_CREAT, 0644);
+    write(fd, &pid_saver, sizeof(pid_saver));
+    close(fd);
+    
+    unlink("/tmp/mysocket");
+    server_fd = socket(AF_UNIX, SOCK_STREAM, 0);
+    
+    memset(&addr, 0, sizeof(addr));
+    addr.sun_family = AF_UNIX;
+    strcpy(addr.sun_path, "/tmp/mysocket");
+    
+    bind(server_fd, (struct sockaddr*)&addr, sizeof(addr));
+    
+    listen(server_fd, 5);
+    
+    //client_fd = accept(server_fd, NULL, NULL);
+    
+    // // 7. Получение данных
+    // recv(client_fd, buffer, sizeof(buffer), 0);
+    // printf("Client: %s\n", buffer);
+    
+    // 8. Отправка ответа
+    // send(client_fd, "Hello from UNIX server", 23, 0);
+    
+    // // 9. Закрытие
+    // close(client_fd);
+    // close(server_fd);
+    // unlink("/tmp/mysocket");
+
+
     pid_t table[MAX_PROGRAMMS_RUN]; //индекс в массиве - ячейка, в которой лежит PID процесса с (id = индекс в массиве)
     while(1)
     {

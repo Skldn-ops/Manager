@@ -7,6 +7,8 @@
 #include <string.h>
 #include <time.h>
 #include <signal.h>
+#include <sys/socket.h>
+#include <sys/un.h>
 
 #ifndef DEF
 #define DEF
