@@ -15,6 +15,7 @@
 
 #define MAX_LEN 1024
 #define MAX_PROGRAMMS_RUN 100
+#define ID_INFO_SIZE 25
 
 typedef enum {
     TASK_PENDING,
@@ -29,19 +30,15 @@ typedef enum {
 
 typedef struct {
     unsigned long long id;
-    //char name[MAX_LEN];
-    
-    TaskState state;
-        
     unsigned long long created_at;
     unsigned long long scheduled_at;
     unsigned long long started_at;
     unsigned long long finished_at;
+    TaskState state;
     unsigned int delay;
     unsigned int timeout;
-    
-    char program_to_exec[1024];
     int exit_code;
+    char program_to_exec[MAX_LEN];
 } Task;
 
 

@@ -12,21 +12,14 @@ int main(void)
 {
     char input[MAX_LEN];
 
-    // QueueNode *head = NULL;
-    //QueueNode *tail = NULL;
-
     unsigned long long id_maker = 0;
-    
-    // pipe(start_fd);
     pid_t queue_control_pid;
-    // close(start_fd[0]);
         
     int sock;
     struct sockaddr_un server;
     
-
-    
-    
+    struct Task *head_task = NULL;
+    struct Task *cur_task = NULL;
     
     //////////////////
     //printf("Queue ready: prog pid is %d and queue oid is %d\n", getpid(), queue_control_pid);
@@ -59,6 +52,7 @@ int main(void)
         if(strcmp(command, "start") == 0)
         {
             id_maker++;
+            id_maker %= MAX_PROGRAMMS_RUN;
 
             sprintf(input + strlen(input), " %llu", id_maker);
 

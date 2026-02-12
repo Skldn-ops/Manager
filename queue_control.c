@@ -5,8 +5,14 @@ void mergeSortList(QueueNode** head);
 QueueNode* insert_QueueNode(QueueNode* head, QueueNode* newQueueNode);
 QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete);
 int server_fd, client_fd;
+int need_add_glob = 0;
 
-void handl_start(int sig)
+void handl(int sig)
+{
+    need_add_glob++;
+}
+
+void start(void)
 {
     char input[MAX_LEN];
     recv(client_fd, input, sizeof(input), 0);
@@ -27,7 +33,7 @@ void handl_start(int sig)
     strcpy(task->program_to_exec, program_to_exec);
     task->scheduled_at = task->created_at + delay;
     task->started_at = -1;
-    task->state = (delay==0) ? TASK_PENDING : TASK_DELAYED;
+    task->state = TASK_DELAYED;
     task->timeout = timeout;
 
     QueueNode *node = malloc(sizeof(QueueNode));
@@ -53,9 +59,9 @@ void handl_reconnect(int sig)
 
 void queue_control(void)
 {
-    signal(SIGUSR1, handl_start);
+    signal(SIGUSR1, handl);
     signal(SIGCHLD, SIG_IGN); // Чтобы завершившиеся контролирующие процессы не висели как зомби
-    signal(SIGHUP, SIG_IGN);
+    signal(SIGHUP, SIG_IGN);    // Чтобы не умер при смерти main
     signal(SIGUSR2, handl_reconnect);
 
     struct sockaddr_un addr;
@@ -75,7 +81,6 @@ void queue_control(void)
     bind(server_fd, (struct sockaddr*)&addr, sizeof(addr));
     
     listen(server_fd, 5);
-    
     //client_fd = accept(server_fd, NULL, NULL);
     
     // // 7. Получение данных
@@ -91,9 +96,13 @@ void queue_control(void)
     // unlink("/tmp/mysocket");
 
 
-    pid_t table[MAX_PROGRAMMS_RUN]; //индекс в массиве - ячейка, в которой лежит PID процесса с (id = индекс в массиве)
     while(1)
     {
+        while(need_add_glob > 0)
+        {
+            start();
+            need_add_glob--;
+        }
         QueueNode *head_loc = head_glob;
         while(head_loc != NULL)
         {
@@ -103,6 +112,7 @@ void queue_control(void)
                 char program_to_exec_tp[MAX_LEN];
                 strcpy(program_to_exec_tp, head_loc->task->program_to_exec);
                 unsigned int timeout_tp = head_loc->task->timeout;
+                unsigned long long test_id = head_loc->task->id;
 
                 head_glob = deleteNodeByPtr(head_glob, head_loc);
                 head_loc = NULL;
@@ -127,7 +137,9 @@ void queue_control(void)
                     {
                         kill(executor_pid, SIGKILL);
                     }
-                    _exit(0);
+                    send(client_fd, &test_id, sizeof(test_id), 0);
+
+                    exit(ret);
                 }
             }
             else
