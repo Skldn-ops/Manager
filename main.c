@@ -17,6 +17,14 @@ int main(void)
     char input[MAX_LEN];
 
     long long id_maker = -1;
+    int fd = open("/tmp/myid_maker", O_RDONLY);
+    if(fd > 0)
+    {
+        read(fd, &id_maker, sizeof(id_maker));
+        close(fd);
+        printf("Restored the id_maker %lld\n", id_maker);
+    }
+
     pid_t queue_control_pid;
         
     int sock;
@@ -58,6 +66,9 @@ int main(void)
         {
             id_maker++;
             id_maker %= MAX_PROGRAMMS_RUN;
+            fd = open("/tmp/myid_maker", O_TRUNC | O_WRONLY | O_CREAT, 0644);
+            write(fd, &id_maker, sizeof(id_maker));
+            close(fd);
 
             sprintf(input + strlen(input), " %lld", id_maker);
 
@@ -72,7 +83,7 @@ int main(void)
             server.sun_family = AF_UNIX;
             strcpy(server.sun_path, "/tmp/mysocket");
             
-            int fd = open("/tmp/myservpid", O_RDONLY);
+            fd = open("/tmp/myservpid", O_RDONLY);
             read(fd, &queue_control_pid, sizeof(queue_control_pid));
             close(fd);
             fd = open("/tmp/myshmid", O_RDONLY);
@@ -120,6 +131,7 @@ int main(void)
             unlink("/tmp/mysocket");
             unlink("/tmp/myshmid");
             unlink("/tmp/mysemid");
+            unlink("/tmp/myid_maker");
             break;
         }
     }

@@ -75,6 +75,7 @@ void queue_control(int out_fd)
                        IPC_CREAT | 0666);
     struct Task *shared = shmat(shmid, NULL, 0);
     memset(shared, 0, sizeof(shared));
+
     int semid = semget(IPC_PRIVATE, 1, IPC_CREAT | 0666);
     semctl(semid, 0, SETVAL, 1);
 
@@ -141,6 +142,7 @@ void queue_control(int out_fd)
                 if(!controlling_pid)
                 {
                     signal(SIGCHLD, ping);
+                    signal(SIGHUP, SIG_IGN);
                     int status = -1;
                     int exit_code = -1;
 
@@ -186,7 +188,6 @@ void queue_control(int out_fd)
                     shmdt(shared);
                     exit(0);
                 }
-                
             }
             else
             {
