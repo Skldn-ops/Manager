@@ -1,26 +1,31 @@
 #include "headl.h"
 
 
-void queue_control(void);
+void queue_control(int out_fd);
+void sem_lock(int semid);
+void sem_unlock(int semid);
 
+void show_table(Task* shared, int id_maker);
+void show_line(Task* shared, char* input, int id_maker);
 
 //      start program_to_exec delay timeout
 
-//int start_fd[2];
 
 int main(void)
 {
+    int out_fd = dup(1);
     char input[MAX_LEN];
 
-    unsigned long long id_maker = 0;
+    long long id_maker = -1;
     pid_t queue_control_pid;
         
     int sock;
     struct sockaddr_un server;
+
     
-    struct Task *head_task = NULL;
-    struct Task *cur_task = NULL;
-    
+    int shmid;
+    Task* shared = NULL;
+    int semid;
     //////////////////
     //printf("Queue ready: prog pid is %d and queue oid is %d\n", getpid(), queue_control_pid);
     while(1)
@@ -54,7 +59,7 @@ int main(void)
             id_maker++;
             id_maker %= MAX_PROGRAMMS_RUN;
 
-            sprintf(input + strlen(input), " %llu", id_maker);
+            sprintf(input + strlen(input), " %lld", id_maker);
 
             send(sock, input, sizeof(input), 0);
             kill(queue_control_pid, SIGUSR1);
@@ -70,6 +75,13 @@ int main(void)
             int fd = open("/tmp/myservpid", O_RDONLY);
             read(fd, &queue_control_pid, sizeof(queue_control_pid));
             close(fd);
+            fd = open("/tmp/myshmid", O_RDONLY);
+            read(fd, &shmid, sizeof(shmid));
+            close(fd);
+            shared = shmat(shmid, NULL, 0);
+            fd = open("/tmp/mysemid", O_RDONLY);
+            read(fd, &semid, sizeof(semid));
+            close(fd);
 
             kill(queue_control_pid, SIGUSR2);
             if(!connect(sock, (struct sockaddr*)&server, sizeof(server)))
@@ -77,33 +89,41 @@ int main(void)
                 printf("connected to queue\n");
             }
             
-            // send(sock, "Hello over UNIX socket", 23, 0);
-            
-            // // 5. Получение ответа
-            // recv(sock, buffer, sizeof(buffer), 0);
-            // printf("Server: %s\n", buffer);
-            
-            // // 6. Закрытие сокета
-            // close(sock);
         }
         else if(strcmp(command, "queue") == 0)
         {
             queue_control_pid = fork();
             if(!queue_control_pid)
             {
-                queue_control();
+                queue_control(out_fd);
             }
-            printf("Queue online\n");
+            printf("queue ready\n");
+        }
+        else if((strcmp(command, "table") == 0) && (shared != NULL))
+        {
+            sem_lock(semid);
+            show_table(shared, id_maker);
+            sem_unlock(semid);
+        }
+        else if((strcmp(command, "line") == 0) && (shared != NULL))
+        {
+            sem_lock(semid);
+            show_line(shared, input, id_maker);
+            sem_unlock(semid);
         }
         else if(strcmp(command, "exit") == 0)
         {
             kill(queue_control_pid, SIGKILL);
             printf("Queue offline\n");
+
             unlink("/tmp/myservpid");
             unlink("/tmp/mysocket");
+            unlink("/tmp/myshmid");
+            unlink("/tmp/mysemid");
             break;
         }
     }
     printf("Exited\n");
+    shmdt(shared);
     return 0;
 }

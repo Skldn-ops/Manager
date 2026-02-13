@@ -9,6 +9,9 @@
 #include <signal.h>
 #include <sys/socket.h>
 #include <sys/un.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/prctl.h>
 
 #ifndef DEF
 #define DEF
@@ -18,18 +21,18 @@
 #define ID_INFO_SIZE 25
 
 typedef enum {
-    TASK_PENDING,
+    //TASK_PENDING,
     TASK_DELAYED,
-    TASK_READY,
+    //TASK_READY,
     TASK_RUNNING,
     TASK_COMPLETED,
     TASK_FAILED,
     TASK_TIMEOUT,
-    TASK_CANCELLED
+    //TASK_CANCELLED
 } TaskState;
 
-typedef struct {
-    unsigned long long id;
+typedef struct Task{
+    long long id;
     unsigned long long created_at;
     unsigned long long scheduled_at;
     unsigned long long started_at;
