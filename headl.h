@@ -12,6 +12,7 @@
 #include <sys/shm.h>
 #include <sys/sem.h>
 #include <sys/prctl.h>
+#include <fcntl.h>
 
 #ifndef DEF
 #define DEF
@@ -20,7 +21,7 @@
 #define MAX_PROGRAMMS_RUN 100
 #define ID_INFO_SIZE 25
 
-typedef enum {
+typedef enum TaskState{
     //TASK_PENDING,
     TASK_DELAYED,
     //TASK_READY,
@@ -30,6 +31,11 @@ typedef enum {
     TASK_TIMEOUT,
     //TASK_CANCELLED
 } TaskState;
+
+enum{
+    TASK_TAB = 0,
+    LOG_FD = 1
+};
 
 typedef struct Task{
     long long id;
@@ -48,7 +54,7 @@ typedef struct Task{
 typedef struct QueueNode{
     Task *task;
     struct QueueNode *next;
-    unsigned deploy_tm;
+    long deploy_tm;
 } QueueNode;
 
 

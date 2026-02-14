@@ -1,19 +1,29 @@
 #include "headl.h"
 
 
-void queue_control(int out_fd);
-void sem_lock(int semid);
-void sem_unlock(int semid);
+void queue_control(int log_fd);
+void sem_lock(int semid, unsigned short pos);
+void sem_unlock(int semid, unsigned short pos);
 
 void show_table(Task* shared, int id_maker);
 void show_line(Task* shared, char* input, int id_maker);
 
+pid_t queue_control_pid = -1;
 //      start program_to_exec delay timeout
-
+void queue_killed(int sig)
+{
+    system("gnome-terminal -- bash -c \"echo 'Queue was killed'; exec bash\"");
+    waitpid(queue_control_pid, NULL, WNOHANG);
+    queue_control_pid = -1;
+    signal(SIGCHLD, SIG_IGN);
+}
 
 int main(void)
 {
-    int out_fd = dup(1);
+    //signal(SIGCHLD, SIG_IGN);
+    signal(SIGPIPE, SIG_IGN);
+
+    int log_fd = open("./LOG_FILE.txt", O_CREAT | O_WRONLY | O_APPEND, 0666);
     char input[MAX_LEN];
 
     long long id_maker = -1;
@@ -25,7 +35,6 @@ int main(void)
         printf("Restored the id_maker %lld\n", id_maker);
     }
 
-    pid_t queue_control_pid;
         
     int sock;
     struct sockaddr_un server;
@@ -62,7 +71,7 @@ int main(void)
         time_t timeout;
         sscanf(input, "%s", command);
 
-        if(strcmp(command, "start") == 0)
+        if(strcmp(command, "start") == 0 && queue_control_pid > 0)
         {
             id_maker++;
             id_maker %= MAX_PROGRAMMS_RUN;
@@ -98,33 +107,43 @@ int main(void)
             if(!connect(sock, (struct sockaddr*)&server, sizeof(server)))
             {
                 printf("connected to queue\n");
+                sem_lock(semid, LOG_FD);
+                dprintf(log_fd, "CONNECTED TO QUEUE\n");
+                sem_unlock(semid, LOG_FD);
             }
             
         }
-        else if(strcmp(command, "queue") == 0)
+        else if(strcmp(command, "queue") == 0 && queue_control_pid == -1)
         {
             queue_control_pid = fork();
             if(!queue_control_pid)
             {
-                queue_control(out_fd);
+                queue_control(log_fd);
             }
             printf("queue ready\n");
+            sem_lock(semid, LOG_FD);
+            dprintf(log_fd, "QUEUE STARTED\n");
+            sem_unlock(semid, LOG_FD);
+            signal(SIGCHLD, queue_killed);
         }
         else if((strcmp(command, "table") == 0) && (shared != NULL))
         {
-            sem_lock(semid);
+            sem_lock(semid, TASK_TAB);
             show_table(shared, id_maker);
-            sem_unlock(semid);
+            sem_unlock(semid, TASK_TAB);
         }
         else if((strcmp(command, "line") == 0) && (shared != NULL))
         {
-            sem_lock(semid);
+            sem_lock(semid, TASK_TAB);
             show_line(shared, input, id_maker);
-            sem_unlock(semid);
+            sem_unlock(semid, TASK_TAB);
         }
         else if(strcmp(command, "exit") == 0)
         {
-            kill(queue_control_pid, SIGKILL);
+            signal(SIGCHLD, SIG_IGN);
+            if(queue_control_pid > 0)
+                kill(queue_control_pid, SIGKILL);
+            
             printf("Queue offline\n");
 
             unlink("/tmp/myservpid");
@@ -135,6 +154,9 @@ int main(void)
             break;
         }
     }
+    
+    dprintf(log_fd, "EXIT SUCCESS\n");
+    
     printf("Exited\n");
     shmdt(shared);
     return 0;
