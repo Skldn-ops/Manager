@@ -67,8 +67,8 @@ int main(void)
         
         char command[MAX_LEN];
         char program_to_exec[MAX_LEN];
-        time_t delay;
-        time_t timeout;
+        //time_t delay;
+        //time_t timeout;
         sscanf(input, "%s", command);
 
         if(strcmp(command, "start") == 0 && queue_control_pid > 0)

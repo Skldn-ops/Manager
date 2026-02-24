@@ -22,14 +22,11 @@
 #define ID_INFO_SIZE 25
 
 typedef enum TaskState{
-    //TASK_PENDING,
     TASK_DELAYED,
-    //TASK_READY,
     TASK_RUNNING,
     TASK_COMPLETED,
     TASK_FAILED,
     TASK_TIMEOUT,
-    //TASK_CANCELLED
 } TaskState;
 
 enum{
@@ -43,11 +40,12 @@ typedef struct Task{
     unsigned long long scheduled_at;
     unsigned long long started_at;
     unsigned long long finished_at;
-    TaskState state;
     unsigned int delay;
     unsigned int timeout;
     int exit_code;
+    int attempts;
     char program_to_exec[MAX_LEN];
+    TaskState state;
 } Task;
 
 

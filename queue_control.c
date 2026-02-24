@@ -25,8 +25,10 @@ void start(Task *shared, int semid, int log_fd)
     time_t delay;
     time_t timeout;
     long long id_maker;
+    int attempts;
 
-    sscanf(input + strlen("start"), "%s %ld %ld %lld", program_to_exec, &delay, &timeout, &id_maker);
+    if(sscanf(input + strlen("start"), "%s %ld %ld %d %lld", program_to_exec, &delay, &timeout, &attempts, &id_maker) != 5)
+        return;
             
     Task *task = malloc(sizeof(Task));
     task->created_at = time(NULL);
@@ -39,6 +41,7 @@ void start(Task *shared, int semid, int log_fd)
     task->started_at = 0;
     task->state = TASK_DELAYED;
     task->timeout = timeout;
+    task->attempts = attempts;
     //////
     sem_lock(semid, TASK_TAB);
     shared[id_maker] = *task;
@@ -158,6 +161,7 @@ void queue_control(int log_fd)
                 unsigned int timeout_tp = head_loc->task->timeout;
                 QueueNode *temp_tp = head_loc->next;
                 long long id = head_loc->task->id;
+                int attempts = head_loc->task->attempts;
 
                 head_glob = deleteNodeByPtr(head_glob, head_loc);
                 head_loc = NULL;
@@ -172,6 +176,7 @@ void queue_control(int log_fd)
                     signal(SIGHUP, SIG_IGN);
                     int status = -1;
                     int exit_code = -1;
+                    int ret = 0;
 
                     sem_lock(semid, TASK_TAB);
                     shared[id].state = TASK_RUNNING;
@@ -182,23 +187,27 @@ void queue_control(int log_fd)
                     dprintf(log_fd, "Task: %s with id: %lld execution started\n", program_to_exec_tp, id);
                     sem_unlock(semid, LOG_FD);
                     ///////
-                    pid_t executor_pid = fork();
-                    if(!executor_pid)
+                    while(exit_code != 0 && attempts-- > 0)
                     {
-                        shmdt(shared);
-                        execlp(program_to_exec_tp, program_to_exec_tp, NULL);
+                        pid_t executor_pid = fork();
+                        if(!executor_pid)
+                        {
+                            shmdt(shared);
+                            execlp(program_to_exec_tp, program_to_exec_tp, NULL);
+                        }
+                        
+                        sleep(timeout_tp);
+                        ret = waitpid(executor_pid, &status, WNOHANG);
+                        if(ret)
+                        {
+                            exit_code = WEXITSTATUS(status);
+                        }
+                        else
+                        {
+                            kill(executor_pid, SIGKILL);
+                        }
                     }
-                    
-                    sleep(timeout_tp);
-                    int ret = waitpid(executor_pid, &status, WNOHANG);
-                    if(ret)
-                    {
-                        exit_code = WEXITSTATUS(status);
-                    }
-                    else
-                    {
-                        kill(executor_pid, SIGKILL);
-                    }
+                    ///////
                     sem_lock(semid, TASK_TAB);
                     if(ret && !exit_code)
                     {
