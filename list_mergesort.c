@@ -71,6 +71,7 @@ QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete) {
     
     if (head == nodeToDelete) {
         QueueNode* newHead = head->next;
+        free(head->task);
         free(head);
         return newHead;
     }
@@ -82,6 +83,7 @@ QueueNode* deleteNodeByPtr(QueueNode* head, QueueNode* nodeToDelete) {
     
     if (current != NULL) {
         current->next = nodeToDelete->next;
+        free(nodeToDelete->task);
         free(nodeToDelete);
     }
     
